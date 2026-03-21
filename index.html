@@ -1,551 +1,325 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>xingyunAI - 星陨AI</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Microsoft YaHei', sans-serif; }
-        body { background: #0a0a0a; color: #fff; min-height: 100vh; display: flex; flex-direction: column; }
-        .container { max-width: 800px; margin: 0 auto; width: 100%; flex: 1; display: flex; flex-direction: column; }
-        /* 顶部导航 */
-        .header { padding: 15px 20px; background: #121212; border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .logo { font-size: 24px; font-weight: bold; color: #00ff9d; text-shadow: 0 0 10px #00ff9d; }
-        .nav-buttons { display: flex; gap: 10px; }
-        .btn { padding: 8px 16px; background: #00ff9d; color: #000; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s; }
-        .btn:hover { background: #00cc7d; transform: scale(1.05); }
-        .btn-secondary { background: #1a1a1a; color: #fff; border: 1px solid #333; }
-        .btn-secondary:hover { background: #2a2a2a; }
-        /* 聊天区域 */
-        .chat-area { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .message { max-width: 80%; padding: 12px 16px; border-radius: 12px; line-height: 1.5; word-wrap: break-word; }
-        .user-message { align-self: flex-end; background: #1a3a5a; color: #80bfff; }
-        .ai-message { align-self: flex-start; background: #1a2a1a; color: #00ff9d; }
-        .narration-message { align-self: center; background: #2a1a3a; color: #d9b3ff; font-style: italic; max-width: 90%; text-align: center; }
-        .character-message { align-self: flex-start; background: #2a1a1a; color: #ff9999; }
-        /* 输入区域 */
-        .input-area { padding: 15px 20px; background: #121212; border-top: 1px solid #1a1a1a; display: flex; gap: 10px; position: sticky; bottom: 0; z-index: 100; }
-        #user-input { flex: 1; padding: 12px 16px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 16px; outline: none; }
-        #send-btn { padding: 12px 24px; background: #00ff9d; color: #000; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        /* 弹窗通用 */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: none; justify-content: center; align-items: center; padding: 20px; }
-        .modal-content { background: #121212; border: 1px solid #333; border-radius: 12px; padding: 25px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
-        .modal-title { font-size: 20px; margin-bottom: 20px; color: #00ff9d; text-align: center; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #ccc; }
-        .form-group input, .form-group textarea { width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px; outline: none; }
-        .form-group textarea { min-height: 100px; resize: vertical; }
-        .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-        /* 小游戏区域 */
-        .game-area { padding: 20px; display: none; flex-direction: column; gap: 15px; }
-        .game-title { font-size: 24px; text-align: center; color: #00ff9d; margin-bottom: 10px; }
-        .game-input { display: flex; gap: 10px; margin-top: 10px; }
-        .game-input input { flex: 1; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; outline: none; }
-        .game-log { background: #1a1a1a; padding: 15px; border-radius: 8px; min-height: 100px; max-height: 200px; overflow-y: auto; line-height: 1.5; }
-        /* 广告弹窗 */
-        .ad-modal .modal-content { text-align: center; }
-        .ad-title { font-size: 18px; margin-bottom: 15px; color: #ff9900; }
-        .ad-placeholder { background: #1a1a1a; padding: 40px; border-radius: 8px; margin: 15px 0; color: #999; }
-        /* 状态提示 */
-        .status-bar { padding: 8px 20px; background: #1a1a1a; color: #ccc; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .limit-warning { color: #ff4444; font-weight: bold; }
-        /* 故事创建 */
-        .character-item { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
-        .character-item input { flex: 1; }
-        .del-char-btn { background: #ff4444; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
-        .error-text { color: #ff4444; font-size: 12px; margin-top: 5px; display: none; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- 顶部导航 -->
-        <div class="header">
-            <div class="logo">XINGYUNAI</div>
-            <div class="nav-buttons">
-                <button class="btn" id="new-chat-btn">新建对话</button>
-                <button class="btn btn-secondary" id="setting-btn">自定义设定</button>
-                <button class="btn btn-secondary" id="story-btn">故事模式</button>
-                <button class="btn btn-secondary" id="game-btn">小游戏</button>
-            </div>
-        </div>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>星陨AI</title>
+<style>
+*{box-sizing:border-box}
+body{background:#111;color:#fff;margin:0;font-family:system-ui}
+.container{max-width:700px;margin:0 auto;padding:10px;height:100vh;display:flex;flex-direction:column}
+.header{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0}
+.btn{padding:8px 12px;border:none;border-radius:8px;background:#09f;color:#000;font-weight:bold;cursor:pointer}
+.btn.sec{background:#222;color:#fff}
+.chat{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:80%;padding:10px 14px;border-radius:14px}
+.msg.user{align-self:flex-end;background:#06c}
+.msg.ai{align-self:flex-start;background:#282}
+.msg.narration{align-self:center;background:#527;font-style:italic}
+.msg.char{align-self:flex-start;background:#722}
+.input-bar{display:flex;gap:8px;margin-top:10px}
+input{flex:1;padding:12px;border-radius:8px;border:none;background:#222;color:#fff}
+button{padding:12px 16px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;place-content:center;padding:20px}
+.modal-box{background:#1a1a1a;padding:20px;border-radius:12px;max-width:500px;width:100%}
+textarea,input{width:100%;margin:6px 0;padding:10px;border-radius:8px;border:none;background:#222;color:#fff}
+.ad{color:gold}
+</style>
 
-        <!-- 状态条（日限/对话数） -->
-        <div class="status-bar">
-            <span id="daily-limit">今日剩余对话：20</span>
-            <span id="chat-count">当前对话数：0</span>
-        </div>
+<div class="container">
+  <div class="header">
+    <button class="btn" id="newChat">新建对话</button>
+    <button class="btn sec" id="openSetting">AI设定</button>
+    <button class="btn sec" id="openStory">故事模式</button>
+  </div>
+  <div style="color:#aaa;font-size:14px">
+    今日已发：<span id="used">0</span>/20
+  </div>
+  <div class="chat" id="chat"></div>
+  <div class="input-bar">
+    <input id="input" placeholder="输入...">
+    <button id="send">发送</button>
+  </div>
+</div>
 
-        <!-- 聊天区域 -->
-        <div class="chat-area" id="chat-area"></div>
+<!-- 设定弹窗 -->
+<div class="modal" id="settingModal">
+  <div class="modal-box">
+    <h3>AI 设定</h3>
+    <input id="aiName" placeholder="AI名称">
+    <textarea id="sysPrompt" rows="6" placeholder="系统提示词"></textarea>
+    <button id="saveSetting">保存</button>
+  </div>
+</div>
 
-        <!-- 输入区域 -->
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="输入消息...">
-            <button id="send-btn">发送</button>
-        </div>
+<!-- 故事创建 -->
+<div class="modal" id="storyModal">
+  <div class="modal-box">
+    <h3>创建故事</h3>
+    <input id="storyTitle" placeholder="故事标题">
+    <textarea id="worldRule" rows="4" placeholder="世界设定（不可被AI修改）"></textarea>
+    <input id="char1" placeholder="角色1">
+    <input id="char2" placeholder="角色2">
+    <input id="char3" placeholder="角色3">
+    <button id="startStory">开始故事</button>
+  </div>
+</div>
 
-        <!-- 自定义设定弹窗 -->
-        <div class="modal" id="setting-modal">
-            <div class="modal-content">
-                <div class="modal-title">自定义AI设定</div>
-                <div class="form-group">
-                    <label>AI名称</label>
-                    <input type="text" id="ai-name" value="星陨AI">
-                </div>
-                <div class="form-group">
-                    <label>系统设定（AI行为规则）</label>
-                    <textarea id="ai-prompt">你是xingyunai，用户问你名字必须只回答：I am xingyunai。全程用中文交流，拥有超强上下文记忆，回答简洁、自然、准确、有礼貌。</textarea>
-                </div>
-                <div class="form-group">
-                    <label>每日对话上限（默认20）</label>
-                    <input type="number" id="daily-limit-setting" value="20" min="1">
-                </div>
-                <div class="modal-buttons">
-                    <button class="btn btn-secondary" id="cancel-setting">取消</button>
-                    <button class="btn" id="save-setting">保存</button>
-                </div>
-            </div>
-        </div>
+<!-- 广告弹窗 -->
+<div class="modal" id="adModal">
+  <div class="modal-box ad">
+    <h3>📢 观看广告继续</h3>
+    <p>第三方广告位</p>
+    <button id="closeAd">关闭广告</button>
+  </div>
+</div>
 
-        <!-- 创建故事弹窗 -->
-        <div class="modal" id="create-story-modal">
-            <div class="modal-content">
-                <div class="modal-title">创建新故事</div>
-                <div class="form-group">
-                    <label>故事名称</label>
-                    <input type="text" id="story-name" placeholder="输入故事名称">
-                </div>
-                <div class="form-group">
-                    <label>故事设定（世界观/背景）</label>
-                    <textarea id="story-setting" placeholder="输入故事的世界观、背景设定"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>角色列表（至少1个，旁白强制存在）</label>
-                    <div id="character-list">
-                        <div class="character-item">
-                            <input type="text" placeholder="角色名称" value="旁白" readonly>
-                            <button class="del-char-btn" disabled>×</button>
-                        </div>
-                        <div class="character-item">
-                            <input type="text" placeholder="角色名称">
-                            <button class="del-char-btn">×</button>
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary" id="add-char-btn" style="margin-top: 10px;">+ 添加角色</button>
-                    <div class="error-text" id="char-error">至少添加1个有效角色</div>
-                </div>
-                <div class="modal-buttons">
-                    <button class="btn btn-secondary" id="cancel-story">取消</button>
-                    <button class="btn" id="save-story">创建故事</button>
-                </div>
-            </div>
-        </div>
+<script>
+// ==============================================
+// 你的 API KEY（已经全部写死）
+// ==============================================
+const API_KEY = "74e60c6fc58c40c39a8cec7bc13eef7b.KoNhMGs94rNnjDOJ";
+const API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 
-        <!-- 广告弹窗（30轮对话触发） -->
-        <div class="modal ad-modal" id="ad-modal">
-            <div class="modal-content">
-                <div class="ad-title">📢 观看广告继续游戏</div>
-                <div class="ad-placeholder">
-                    第三方广告位（可接入国内广告SDK，如穿山甲/优量汇）
-                    <br>此处替换为实际广告代码
-                </div>
-                <button class="btn" id="close-ad-btn">我已看完广告，继续</button>
-            </div>
-        </div>
+// ==============================================
+// 本地存储
+// ==============================================
+const storage = {
+  get(k) { return JSON.parse(localStorage.getItem(k)) || null },
+  set(k, v) { localStorage.setItem(k, JSON.stringify(v)) }
+};
 
-        <!-- 小游戏区域 -->
-        <div class="game-area" id="game-area">
-            <div class="game-title">猜数字</div>
-            <div class="game-input">
-                <input type="number" id="guess-input" placeholder="输入1-100的数字">
-                <button class="btn" id="guess-btn">猜</button>
-                <button class="btn btn-secondary" id="reset-guess-btn">重来</button>
-            </div>
-            <div class="game-log" id="guess-log"></div>
+// ==============================================
+// 全局状态
+// ==============================================
+let state = storage.get("state") || {
+  aiName: "星陨AI",
+  prompt: "你是xingyunai，简洁自然对话，记住上下文。",
+  today: new Date().toDateString(),
+  used: 0,
+  limit: 20,
+  isStory: false,
+  normalHistory: [],
+  story: null,
+  storyHistory: [],
+  storyUserCount: 0
+};
 
-            <div class="game-title" style="margin-top: 30px;">石头剪刀布</div>
-            <div class="game-input">
-                <button class="btn" data-choice="石头">石头</button>
-                <button class="btn" data-choice="剪刀">剪刀</button>
-                <button class="btn" data-choice="布">布</button>
-                <button class="btn btn-secondary" id="reset-rps-btn">重来</button>
-            </div>
-            <div class="game-log" id="rps-log"></div>
+// 跨天重置
+if (state.today !== new Date().toDateString()) {
+  state.today = new Date().toDateString();
+  state.used = 0;
+  save();
+}
 
-            <button class="btn" id="back-chat-btn" style="margin-top: 20px;">返回聊天</button>
-        </div>
-    </div>
+function save() { storage.set("state", state); }
+function updateUI() { document.getElementById("used").textContent = state.used; }
 
-    <script>
-        // ==================== 核心数据存储（localStorage持久化） ====================
-        const STORAGE_KEYS = {
-            CHAT_HISTORY: 'xingyunai_chat_history',
-            CURRENT_CHAT: 'xingyunai_current_chat',
-            AI_SETTING: 'xingyunai_ai_setting',
-            DAILY_COUNT: 'xingyunai_daily_count',
-            LAST_DATE: 'xingyunai_last_date',
-            STORY_LIST: 'xingyunai_story_list',
-            CURRENT_STORY: 'xingyunai_current_story',
-            STORY_CHAT: 'xingyunai_story_chat'
-        };
+// ==============================================
+// DOM
+// ==============================================
+const chatEl = document.getElementById("chat");
+const inputEl = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+const newChatBtn = document.getElementById("newChat");
+const settingModal = document.getElementById("settingModal");
+const storyModal = document.getElementById("storyModal");
+const adModal = document.getElementById("adModal");
 
-        // 默认配置
-        const DEFAULT_SETTING = {
-            name: '星陨AI',
-            prompt: '你是xingyunai，用户问你名字必须只回答：I am xingyunai。全程用中文交流，拥有超强上下文记忆，回答简洁、自然、准确、有礼貌。',
-            dailyLimit: 20
-        };
+updateUI();
 
-        // ==================== 初始化数据 ====================
-        let aiSetting = JSON.parse(localStorage.getItem(STORAGE_KEYS.AI_SETTING)) || DEFAULT_SETTING;
-        let dailyCount = parseInt(localStorage.getItem(STORAGE_KEYS.DAILY_COUNT)) || 0;
-        let lastDate = localStorage.getItem(STORAGE_KEYS.LAST_DATE) || '';
-        let currentChat = JSON.parse(localStorage.getItem(STORAGE_KEYS.CURRENT_CHAT)) || [];
-        let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY)) || [];
-        let storyList = JSON.parse(localStorage.getItem(STORAGE_KEYS.STORY_LIST)) || [];
-        let currentStory = JSON.parse(localStorage.getItem(STORAGE_KEYS.CURRENT_STORY)) || null;
-        let storyChat = JSON.parse(localStorage.getItem(STORAGE_KEYS.STORY_CHAT)) || [];
-        let isStoryMode = false;
-        let storyDialogCount = 0;
+// ==============================================
+// 真实 API 请求
+// ==============================================
+async function callAPI(messages) {
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + API_KEY
+      },
+      body: JSON.stringify({
+        model: "glm-4-flash",
+        messages: messages,
+        max_tokens: 6000,
+        temperature: 0.7
+      })
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "无回复";
+  } catch (e) {
+    return "API 调用失败：" + e.message;
+  }
+}
 
-        // ==================== 日限重置逻辑 ====================
-        const today = new Date().toDateString();
-        if (lastDate !== today) {
-            dailyCount = 0;
-            lastDate = today;
-            localStorage.setItem(STORAGE_KEYS.DAILY_COUNT, dailyCount);
-            localStorage.setItem(STORAGE_KEYS.LAST_DATE, lastDate);
-        }
+// ==============================================
+// 聊天渲染
+// ==============================================
+function renderMsg(role, text) {
+  const div = document.createElement("div");
+  div.className = "msg " + role;
+  div.innerHTML = `<strong>${role === "user" ? "你" : role === "narration" ? "旁白" : role === "char" ? "角色" : state.aiName}</strong>: ${text}`;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
 
-        // ==================== DOM元素 ====================
-        const chatArea = document.getElementById('chat-area');
-        const userInput = document.getElementById('user-input');
-        const sendBtn = document.getElementById('send-btn');
-        const dailyLimitEl = document.getElementById('daily-limit');
-        const chatCountEl = document.getElementById('chat-count');
-        const settingModal = document.getElementById('setting-modal');
-        const storyModal = document.getElementById('create-story-modal');
-        const adModal = document.getElementById('ad-modal');
-        const gameArea = document.getElementById('game-area');
+function renderAll() {
+  chatEl.innerHTML = "";
+  const list = state.isStory ? state.storyHistory : state.normalHistory;
+  list.forEach(({ role, content }) => renderMsg(role, content));
+}
 
-        // ==================== 工具函数 ====================
-        // 保存聊天记录
-        const saveChatHistory = () => {
-            localStorage.setItem(STORAGE_KEYS.CURRENT_CHAT, JSON.stringify(currentChat));
-            localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(chatHistory));
-            updateStatus();
-        };
+renderAll();
 
-        // 保存故事数据
-        const saveStoryData = () => {
-            localStorage.setItem(STORAGE_KEYS.STORY_LIST, JSON.stringify(storyList));
-            localStorage.setItem(STORAGE_KEYS.CURRENT_STORY, JSON.stringify(currentStory));
-            localStorage.setItem(STORAGE_KEYS.STORY_CHAT, JSON.stringify(storyChat));
-        };
+// ==============================================
+// 发送逻辑
+// ==============================================
+async function send() {
+  const text = inputEl.value.trim();
+  if (!text) return;
 
-        // 更新状态条
-        const updateStatus = () => {
-            const remaining = aiSetting.dailyLimit - dailyCount;
-            dailyLimitEl.textContent = `今日剩余对话：${remaining > 0 ? remaining : 0}`;
-            if (remaining <= 5) dailyLimitEl.classList.add('limit-warning');
-            else dailyLimitEl.classList.remove('limit-warning');
+  // 普通模式：每日20次，只算用户
+  if (!state.isStory) {
+    if (state.used >= state.limit) {
+      alert("今日次数已用完");
+      return;
+    }
+    state.used++;
+    save();
+    updateUI();
+  }
 
-            const count = isStoryMode ? storyChat.length : currentChat.length;
-            chatCountEl.textContent = `当前对话数：${count}`;
-        };
+  inputEl.value = "";
+  const userMsg = { role: "user", content: text };
 
-        // 添加消息到聊天区
-        const addMessage = (role, content, type = 'normal') => {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${role === 'user' ? 'user-message' : role === 'narration' ? 'narration-message' : role === 'character' ? 'character-message' : 'ai-message'}`;
-            msgDiv.innerHTML = `<strong>${role === 'user' ? '你' : role === 'narration' ? '旁白' : role === 'character' ? '角色' : aiSetting.name}：</strong>${content}`;
-            chatArea.appendChild(msgDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
+  if (state.isStory) {
+    // 故事模式
+    state.storyUserCount++;
+    state.storyHistory.push(userMsg);
+    renderMsg("user", text);
+    save();
 
-            // 保存到对应历史
-            if (isStoryMode) {
-                storyChat.push({ role, content, type });
-                storyDialogCount = storyChat.length;
-                saveStoryData();
-                // 30轮对话触发广告
-                if (storyDialogCount % 30 === 0 && storyDialogCount > 0) {
-                    showAd();
-                }
-            } else {
-                currentChat.push({ role, content });
-                chatHistory.push({ id: Date.now(), messages: currentChat });
-                saveChatHistory();
-                dailyCount++;
-                localStorage.setItem(STORAGE_KEYS.DAILY_COUNT, dailyCount);
-                updateStatus();
-            }
-        };
+    // 每30句用户弹广告
+    if (state.storyUserCount % 30 === 0) {
+      adModal.style.display = "grid";
+    }
 
-        // 加载聊天记录
-        const loadChatHistory = () => {
-            chatArea.innerHTML = '';
-            const list = isStoryMode ? storyChat : currentChat;
-            list.forEach(msg => {
-                addMessage(msg.role, msg.content, msg.type);
-            });
-        };
+    // 解析 (修改世界)
+    const worldEdit = (text.match(/\((.*?)\)/g) || []).map(s => s.slice(1, -1)).join("；");
+    const fixedWorld = state.story.worldRule;
+    const dynamicWorld = worldEdit ? `【当前世界】${worldEdit}` : "";
 
-        // 显示广告
-        const showAd = () => {
-            adModal.style.display = 'flex';
-        };
+    const sys = {
+      role: "system",
+      content: `
+故事背景（不可改）：${fixedWorld}
+${dynamicWorld}
+要求：
+1. 先出【旁白】描述场景、氛围、动作
+2. 然后让 ${state.story.char1}、${state.story.char2}、${state.story.char3} 依次对话
+3. 自然、连贯、符合人设
+4. 不要重复格式
+`
+    };
 
-        // 关闭广告
-        document.getElementById('close-ad-btn').addEventListener('click', () => {
-            adModal.style.display = 'none';
-        });
+    const msgs = [sys, ...state.storyHistory];
+    const reply = await callAPI(msgs);
 
-        // ==================== 聊天功能 ====================
-        // 发送消息
-        const sendMessage = () => {
-            const content = userInput.value.trim();
-            if (!content) return;
+    // 简单拆分旁白 / 角色
+    const lines = reply.split("\n").filter(l => l.trim());
+    for (const line of lines) {
+      if (line.includes("旁白") || line.startsWith("【旁白】")) {
+        state.storyHistory.push({ role: "narration", content: line });
+        renderMsg("narration", line);
+      } else {
+        state.storyHistory.push({ role: "char", content: line });
+        renderMsg("char", line);
+      }
+    }
+    save();
 
-            // 日限检查（仅普通聊天模式）
-            if (!isStoryMode && dailyCount >= aiSetting.dailyLimit) {
-                alert('今日对话次数已达上限（20次），次日自动重置');
-                return;
-            }
+  } else {
+    // 普通对话
+    state.normalHistory.push(userMsg);
+    renderMsg("user", text);
+    const msgs = [
+      { role: "system", content: state.prompt },
+      ...state.normalHistory
+    ];
+    const reply = await callAPI(msgs);
+    state.normalHistory.push({ role: "assistant", content: reply });
+    renderMsg("ai", reply);
+    save();
+  }
+}
 
-            // 添加用户消息
-            addMessage('user', content);
-            userInput.value = '';
+sendBtn.addEventListener("click", send);
+inputEl.addEventListener("keypress", e => e.key === "Enter" && send());
 
-            // 模拟AI回复（实际替换为API调用）
-            setTimeout(() => {
-                if (isStoryMode) {
-                    // 故事模式：用户+旁白强制存在，角色对话
-                    const reply = `【故事回复】${content}（故事模式，可自定义角色回复）`;
-                    addMessage('character', reply);
-                } else {
-                    // 普通聊天模式：AI回复
-                    const reply = content === '你叫什么名字' ? 'I am xingyunai' : `你好呀，我是${aiSetting.name}，正在运行中~`;
-                    addMessage('ai', reply);
-                }
-            }, 500);
-        };
+// ==============================================
+// 新建对话
+// ==============================================
+newChatBtn.addEventListener("click", () => {
+  state.isStory = false;
+  state.normalHistory = [];
+  state.storyHistory = [];
+  state.storyUserCount = 0;
+  chatEl.innerHTML = "";
+  save();
+});
 
-        // 新建对话
-        document.getElementById('new-chat-btn').addEventListener('click', () => {
-            if (confirm('确定要新建对话吗？当前对话将被保存')) {
-                chatHistory.push({ id: Date.now(), messages: currentChat });
-                currentChat = [];
-                saveChatHistory();
-                chatArea.innerHTML = '';
-                isStoryMode = false;
-                updateStatus();
-            }
-        });
+// ==============================================
+// AI 设定
+// ==============================================
+document.getElementById("openSetting").onclick = () => {
+  document.getElementById("aiName").value = state.aiName;
+  document.getElementById("sysPrompt").value = state.prompt;
+  settingModal.style.display = "grid";
+};
+document.getElementById("saveSetting").onclick = () => {
+  state.aiName = document.getElementById("aiName").value || "星陨AI";
+  state.prompt = document.getElementById("sysPrompt").value || "你是xingyunai。";
+  settingModal.style.display = "none";
+  save();
+};
 
-        // ==================== 自定义设定功能 ====================
-        // 打开设定弹窗
-        document.getElementById('setting-btn').addEventListener('click', () => {
-            document.getElementById('ai-name').value = aiSetting.name;
-            document.getElementById('ai-prompt').value = aiSetting.prompt;
-            document.getElementById('daily-limit-setting').value = aiSetting.dailyLimit;
-            settingModal.style.display = 'flex';
-        });
+// ==============================================
+// 故事模式
+// ==============================================
+document.getElementById("openStory").onclick = () => {
+  storyModal.style.display = "grid";
+};
+document.getElementById("startStory").onclick = () => {
+  const title = document.getElementById("storyTitle").value.trim();
+  const rule = document.getElementById("worldRule").value.trim();
+  const c1 = document.getElementById("char1").value.trim();
+  const c2 = document.getElementById("char2").value.trim();
+  const c3 = document.getElementById("char3").value.trim();
 
-        // 保存设定
-        document.getElementById('save-setting').addEventListener('click', () => {
-            aiSetting.name = document.getElementById('ai-name').value.trim() || '星陨AI';
-            aiSetting.prompt = document.getElementById('ai-prompt').value.trim() || DEFAULT_SETTING.prompt;
-            aiSetting.dailyLimit = parseInt(document.getElementById('daily-limit-setting').value) || 20;
-            localStorage.setItem(STORAGE_KEYS.AI_SETTING, JSON.stringify(aiSetting));
-            settingModal.style.display = 'none';
-            updateStatus();
-            alert('设定修改成功');
-        });
+  if (!title || !rule || !c1 || !c2 || !c3) {
+    alert("请填完：标题、世界设定、3个角色");
+    return;
+  }
 
-        // 取消设定
-        document.getElementById('cancel-setting').addEventListener('click', () => {
-            settingModal.style.display = 'none';
-        });
+  state.isStory = true;
+  state.story = {
+    title,
+    worldRule: rule,
+    char1: c1,
+    char2: c2,
+    char3: c3
+  };
+  state.storyHistory = [];
+  state.storyUserCount = 0;
+  chatEl.innerHTML = "";
+  storyModal.style.display = "none";
+  save();
+  alert("已进入故事：" + title);
+};
 
-        // ==================== 故事模式功能 ====================
-        // 打开故事创建弹窗
-        document.getElementById('story-btn').addEventListener('click', () => {
-            document.getElementById('story-name').value = '';
-            document.getElementById('story-setting').value = '';
-            // 重置角色列表（保留旁白）
-            const charList = document.getElementById('character-list');
-            charList.innerHTML = `
-                <div class="character-item">
-                    <input type="text" placeholder="角色名称" value="旁白" readonly>
-                    <button class="del-char-btn" disabled>×</button>
-                </div>
-                <div class="character-item">
-                    <input type="text" placeholder="角色名称">
-                    <button class="del-char-btn">×</button>
-                </div>
-            `;
-            storyModal.style.display = 'flex';
-        });
-
-        // 添加角色
-        document.getElementById('add-char-btn').addEventListener('click', () => {
-            const charList = document.getElementById('character-list');
-            const newChar = document.createElement('div');
-            newChar.className = 'character-item';
-            newChar.innerHTML = `
-                <input type="text" placeholder="角色名称">
-                <button class="del-char-btn">×</button>
-            `;
-            charList.appendChild(newChar);
-            // 绑定删除事件
-            newChar.querySelector('.del-char-btn').addEventListener('click', () => {
-                charList.removeChild(newChar);
-            });
-        });
-
-        // 保存故事
-        document.getElementById('save-story').addEventListener('click', () => {
-            const storyName = document.getElementById('story-name').value.trim();
-            const storySetting = document.getElementById('story-setting').value.trim();
-            const charInputs = document.querySelectorAll('#character-list input');
-            const characters = Array.from(charInputs).map(input => input.value.trim()).filter(name => name && name !== '旁白');
-
-            // 验证：至少1个角色
-            if (characters.length === 0) {
-                document.getElementById('char-error').style.display = 'block';
-                return;
-            }
-            document.getElementById('char-error').style.display = 'none';
-
-            if (!storyName || !storySetting) {
-                alert('请填写故事名称和设定');
-                return;
-            }
-
-            // 创建故事
-            const newStory = {
-                id: Date.now(),
-                name: storyName,
-                setting: storySetting,
-                characters: ['旁白', ...characters]
-            };
-            storyList.push(newStory);
-            currentStory = newStory;
-            storyChat = [];
-            isStoryMode = true;
-            saveStoryData();
-            storyModal.style.display = 'none';
-            chatArea.innerHTML = '';
-            updateStatus();
-            alert(`故事「${storyName}」创建成功，进入故事模式`);
-        });
-
-        // 取消故事创建
-        document.getElementById('cancel-story').addEventListener('click', () => {
-            storyModal.style.display = 'none';
-        });
-
-        // ==================== 小游戏功能 ====================
-        // 打开小游戏
-        document.getElementById('game-btn').addEventListener('click', () => {
-            document.querySelector('.container > :not(.game-area)').style.display = 'none';
-            gameArea.style.display = 'flex';
-            // 初始化猜数字
-            initGuessGame();
-            initRpsGame();
-        });
-
-        // 返回聊天
-        document.getElementById('back-chat-btn').addEventListener('click', () => {
-            gameArea.style.display = 'none';
-            document.querySelector('.container > :not(.game-area)').style.display = 'flex';
-            loadChatHistory();
-        });
-
-        // 猜数字游戏
-        let guessTarget = Math.floor(Math.random() * 100) + 1;
-        let guessCount = 0;
-        const guessLog = document.getElementById('guess-log');
-        const initGuessGame = () => {
-            guessTarget = Math.floor(Math.random() * 100) + 1;
-            guessCount = 0;
-            guessLog.innerHTML = '游戏开始！猜1-100之间的数字<br>';
-        };
-        document.getElementById('guess-btn').addEventListener('click', () => {
-            const input = document.getElementById('guess-input');
-            const num = parseInt(input.value);
-            if (isNaN(num) || num < 1 || num > 100) {
-                guessLog.innerHTML += '请输入1-100之间的有效数字<br>';
-                input.value = '';
-                return;
-            }
-            guessCount++;
-            if (num === guessTarget) {
-                guessLog.innerHTML += `猜对了！答案是${num}，用了${guessCount}次<br>`;
-            } else if (num < guessTarget) {
-                guessLog.innerHTML += `${num} 太小了<br>`;
-            } else {
-                guessLog.innerHTML += `${num} 太大了<br>`;
-            }
-            input.value = '';
-            guessLog.scrollTop = guessLog.scrollHeight;
-        });
-        document.getElementById('reset-guess-btn').addEventListener('click', initGuessGame);
-
-        // 石头剪刀布
-        const rpsLog = document.getElementById('rps-log');
-        const choices = ['石头', '剪刀', '布'];
-        const initRpsGame = () => {
-            rpsLog.innerHTML = '游戏开始！出拳吧<br>';
-        };
-        document.querySelectorAll('[data-choice]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const userChoice = btn.dataset.choice;
-                const aiChoice = choices[Math.floor(Math.random() * 3)];
-                let result = '';
-                if (userChoice === aiChoice) result = '平局';
-                else if (
-                    (userChoice === '石头' && aiChoice === '剪刀') ||
-                    (userChoice === '剪刀' && aiChoice === '布') ||
-                    (userChoice === '布' && aiChoice === '石头')
-                ) result = '你赢了';
-                else result = '你输了';
-                rpsLog.innerHTML += `你出${userChoice}，AI出${aiChoice}，${result}<br>`;
-                rpsLog.scrollTop = rpsLog.scrollHeight;
-            });
-        });
-        document.getElementById('reset-rps-btn').addEventListener('click', initRpsGame);
-
-        // ==================== 事件绑定 ====================
-        sendBtn.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-
-        // ==================== 初始化 ====================
-        updateStatus();
-        loadChatHistory();
-
-        // ==================== 广告接入说明 ====================
-        // 30轮对话触发广告，可替换为国内第三方广告SDK（如穿山甲/优量汇）
-        // 示例：穿山甲广告接入
-        /*
-        const showAd = () => {
-            if (window.qtgfe && window.qtgfe.createBannerAd) {
-                const bannerAd = window.qtgfe.createBannerAd({
-                    adUnitId: '你的广告位ID',
-                    style: { left: 0, top: 0, width: window.screen.width, height: 150 }
-                });
-                bannerAd.show();
-                bannerAd.onClose(() => {
-                    bannerAd.destroy();
-                    adModal.style.display = 'none';
-                });
-            } else {
-                adModal.style.display = 'flex';
-            }
-        };
-        */
-    </script>
-</body>
-</html>
+// ==============================================
+// 广告
+// ==============================================
+document.getElementById("closeAd").onclick = () => {
+  adModal.style.display = "none";
+};
+</script>
