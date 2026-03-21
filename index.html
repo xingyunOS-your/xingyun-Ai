@@ -7,20 +7,23 @@
 body{background:#111;color:#fff;margin:0;font-family:system-ui}
 .container{max-width:700px;margin:0 auto;padding:10px;height:100vh;display:flex;flex-direction:column}
 .header{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0}
-.btn{padding:8px 12px;border:none;border-radius:8px;background:#09f;color:#000;font-weight:bold;cursor:pointer}
+.btn{padding:8px 12px;border:none;border-radius:8px;background:#00ccff;color:#000;font-weight:bold;cursor:pointer}
 .btn.sec{background:#222;color:#fff}
 .chat{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
-.msg{max-width:80%;padding:10px 14px;border-radius:14px}
-.msg.user{align-self:flex-end;background:#06c}
-.msg.ai{align-self:flex-start;background:#282}
-.msg.narration{align-self:center;background:#527;font-style:italic}
-.msg.char{align-self:flex-start;background:#722}
+.msg{max-width:85%;padding:12px 16px;border-radius:18px;line-height:1.6}
+.msg.user{align-self:flex-end;background:#0066cc;color:#80bfff}
+.msg.ai{align-self:flex-start;background:#225522;color:#00ff99}
+.msg.narration{align-self:center;background:#552277;color:#d9b3ff;font-style:italic}
+.msg.char{align-self:flex-start;background:#772222;color:#ff9999}
 .input-bar{display:flex;gap:8px;margin-top:10px}
-input{flex:1;padding:12px;border-radius:8px;border:none;background:#222;color:#fff}
-button{padding:12px 16px}
+input{flex:1;padding:14px;border-radius:12px;border:none;background:#222;color:#fff;font-size:16px}
+button{padding:14px 20px;border-radius:12px;border:none;font-weight:bold;cursor:pointer}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;place-content:center;padding:20px}
 .modal-box{background:#1a1a1a;padding:20px;border-radius:12px;max-width:500px;width:100%}
-textarea,input{width:100%;margin:6px 0;padding:10px;border-radius:8px;border:none;background:#222;color:#fff}
+textarea,input{width:100%;margin:8px 0;padding:12px;border-radius:8px;border:none;background:#222;color:#fff;font-size:15px}
+.char-item{display:flex;gap:8px;align-items:center;margin:6px 0}
+.char-item input{flex:1;margin:0}
+.del-char{background:#ff4444;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
 .ad{color:gold}
 </style>
 
@@ -30,7 +33,7 @@ textarea,input{width:100%;margin:6px 0;padding:10px;border-radius:8px;border:non
     <button class="btn sec" id="openSetting">AI设定</button>
     <button class="btn sec" id="openStory">故事模式</button>
   </div>
-  <div style="color:#aaa;font-size:14px">
+  <div style="color:#aaa;font-size:14px;padding:4px 0">
     今日已发：<span id="used">0</span>/20
   </div>
   <div class="chat" id="chat"></div>
@@ -44,9 +47,10 @@ textarea,input{width:100%;margin:6px 0;padding:10px;border-radius:8px;border:non
 <div class="modal" id="settingModal">
   <div class="modal-box">
     <h3>AI 设定</h3>
-    <input id="aiName" placeholder="AI名称">
-    <textarea id="sysPrompt" rows="6" placeholder="系统提示词"></textarea>
-    <button id="saveSetting">保存</button>
+    <input id="aiName" placeholder="AI名称" value="星陨AI">
+    <textarea id="sysPrompt" rows="6" placeholder="系统提示词">你的名字是xingyunai，用户问你名字必须只回答：I am xingyunai。全程用中文交流，拥有超强上下文记忆，记住所有对话内容，绝不忘记。回答简洁、自然、准确、有礼貌。</textarea>
+    <button class="btn" id="saveSetting">保存</button>
+    <button class="btn sec" id="cancelSetting">取消</button>
   </div>
 </div>
 
@@ -56,10 +60,20 @@ textarea,input{width:100%;margin:6px 0;padding:10px;border-radius:8px;border:non
     <h3>创建故事</h3>
     <input id="storyTitle" placeholder="故事标题">
     <textarea id="worldRule" rows="4" placeholder="世界设定（不可被AI修改）"></textarea>
-    <input id="char1" placeholder="角色1">
-    <input id="char2" placeholder="角色2">
-    <input id="char3" placeholder="角色3">
-    <button id="startStory">开始故事</button>
+    <label>角色列表（旁白强制存在，至少1个角色）</label>
+    <div id="charList">
+      <div class="char-item">
+        <input type="text" value="旁白" readonly>
+        <button class="del-char" disabled>×</button>
+      </div>
+      <div class="char-item">
+        <input type="text" placeholder="角色名称">
+        <button class="del-char">×</button>
+      </div>
+    </div>
+    <button class="btn sec" id="addChar">+ 添加角色</button>
+    <button class="btn" id="startStory">开始故事</button>
+    <button class="btn sec" id="cancelStory">取消</button>
   </div>
 </div>
 
@@ -67,14 +81,14 @@ textarea,input{width:100%;margin:6px 0;padding:10px;border-radius:8px;border:non
 <div class="modal" id="adModal">
   <div class="modal-box ad">
     <h3>📢 观看广告继续</h3>
-    <p>第三方广告位</p>
-    <button id="closeAd">关闭广告</button>
+    <p>第三方广告位（可接入穿山甲/优量汇）</p>
+    <button class="btn" id="closeAd">关闭广告</button>
   </div>
 </div>
 
 <script>
 // ==============================================
-// 你的 API KEY（已经全部写死）
+// 你的 API KEY（写死）
 // ==============================================
 const API_KEY = "74e60c6fc58c40c39a8cec7bc13eef7b.KoNhMGs94rNnjDOJ";
 const API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
@@ -92,7 +106,7 @@ const storage = {
 // ==============================================
 let state = storage.get("state") || {
   aiName: "星陨AI",
-  prompt: "你是xingyunai，简洁自然对话，记住上下文。",
+  prompt: "你的名字是xingyunai，用户问你名字必须只回答：I am xingyunai。全程用中文交流，拥有超强上下文记忆，记住所有对话内容，绝不忘记。回答简洁、自然、准确、有礼貌。",
   today: new Date().toDateString(),
   used: 0,
   limit: 20,
@@ -123,6 +137,7 @@ const newChatBtn = document.getElementById("newChat");
 const settingModal = document.getElementById("settingModal");
 const storyModal = document.getElementById("storyModal");
 const adModal = document.getElementById("adModal");
+const charListEl = document.getElementById("charList");
 
 updateUI();
 
@@ -154,10 +169,16 @@ async function callAPI(messages) {
 // ==============================================
 // 聊天渲染
 // ==============================================
-function renderMsg(role, text) {
+function renderMsg(role, text, name = "") {
   const div = document.createElement("div");
-  div.className = "msg " + role;
-  div.innerHTML = `<strong>${role === "user" ? "你" : role === "narration" ? "旁白" : role === "char" ? "角色" : state.aiName}</strong>: ${text}`;
+  let roleName, cls;
+  if (role === "user") { roleName = "你"; cls = "user"; }
+  else if (role === "narration") { roleName = "旁白"; cls = "narration"; }
+  else if (role === "char") { roleName = name || "角色"; cls = "char"; }
+  else { roleName = state.aiName; cls = "ai"; }
+
+  div.className = "msg " + cls;
+  div.innerHTML = `<strong>${roleName}</strong>: ${text}`;
   chatEl.appendChild(div);
   chatEl.scrollTop = chatEl.scrollHeight;
 }
@@ -165,7 +186,7 @@ function renderMsg(role, text) {
 function renderAll() {
   chatEl.innerHTML = "";
   const list = state.isStory ? state.storyHistory : state.normalHistory;
-  list.forEach(({ role, content }) => renderMsg(role, content));
+  list.forEach(({ role, content, name }) => renderMsg(role, content, name));
 }
 
 renderAll();
@@ -206,33 +227,41 @@ async function send() {
     // 解析 (修改世界)
     const worldEdit = (text.match(/\((.*?)\)/g) || []).map(s => s.slice(1, -1)).join("；");
     const fixedWorld = state.story.worldRule;
-    const dynamicWorld = worldEdit ? `【当前世界】${worldEdit}` : "";
+    const dynamicWorld = worldEdit ? `【用户修改世界：${worldEdit}】` : "";
+
+    // 生成角色列表字符串
+    const charNames = state.story.characters.filter(c => c !== "旁白").join("、");
+    const charPrompt = charNames ? `让 ${charNames} 依次对话` : "让角色依次对话";
 
     const sys = {
       role: "system",
       content: `
-故事背景（不可改）：${fixedWorld}
+故事背景（不可修改）：${fixedWorld}
 ${dynamicWorld}
 要求：
 1. 先出【旁白】描述场景、氛围、动作
-2. 然后让 ${state.story.char1}、${state.story.char2}、${state.story.char3} 依次对话
+2. ${charPrompt}
 3. 自然、连贯、符合人设
-4. 不要重复格式
+4. 每条对话以【角色名】开头
+5. 不要重复格式
 `
     };
 
     const msgs = [sys, ...state.storyHistory];
     const reply = await callAPI(msgs);
 
-    // 简单拆分旁白 / 角色
+    // 严格拆分旁白/角色
     const lines = reply.split("\n").filter(l => l.trim());
     for (const line of lines) {
       if (line.includes("旁白") || line.startsWith("【旁白】")) {
         state.storyHistory.push({ role: "narration", content: line });
         renderMsg("narration", line);
       } else {
-        state.storyHistory.push({ role: "char", content: line });
-        renderMsg("char", line);
+        // 提取角色名
+        const nameMatch = line.match(/【(.*?)】/);
+        const charName = nameMatch ? nameMatch[1] : "角色";
+        state.storyHistory.push({ role: "char", content: line, name: charName });
+        renderMsg("char", line, charName);
       }
     }
     save();
@@ -265,6 +294,7 @@ newChatBtn.addEventListener("click", () => {
   state.storyUserCount = 0;
   chatEl.innerHTML = "";
   save();
+  renderAll();
 });
 
 // ==============================================
@@ -281,22 +311,60 @@ document.getElementById("saveSetting").onclick = () => {
   settingModal.style.display = "none";
   save();
 };
+document.getElementById("cancelSetting").onclick = () => {
+  settingModal.style.display = "none";
+};
 
 // ==============================================
-// 故事模式
+// 故事模式（自定义角色数量）
 // ==============================================
+// 添加角色
+document.getElementById("addChar").onclick = () => {
+  const newItem = document.createElement("div");
+  newItem.className = "char-item";
+  newItem.innerHTML = `
+    <input type="text" placeholder="角色名称">
+    <button class="del-char">×</button>
+  `;
+  charListEl.appendChild(newItem);
+  // 绑定删除
+  newItem.querySelector(".del-char").onclick = () => {
+    charListEl.removeChild(newItem);
+  };
+};
+
+// 初始化角色列表删除
+charListEl.querySelectorAll(".del-char:not([disabled])").forEach(btn => {
+  btn.onclick = () => charListEl.removeChild(btn.parentElement);
+});
+
 document.getElementById("openStory").onclick = () => {
+  // 重置角色列表（保留旁白+1个空角色）
+  charListEl.innerHTML = `
+    <div class="char-item">
+      <input type="text" value="旁白" readonly>
+      <button class="del-char" disabled>×</button>
+    </div>
+    <div class="char-item">
+      <input type="text" placeholder="角色名称">
+      <button class="del-char">×</button>
+    </div>
+  `;
+  // 绑定删除
+  charListEl.querySelectorAll(".del-char:not([disabled])").forEach(btn => {
+    btn.onclick = () => charListEl.removeChild(btn.parentElement);
+  });
   storyModal.style.display = "grid";
 };
+
 document.getElementById("startStory").onclick = () => {
   const title = document.getElementById("storyTitle").value.trim();
   const rule = document.getElementById("worldRule").value.trim();
-  const c1 = document.getElementById("char1").value.trim();
-  const c2 = document.getElementById("char2").value.trim();
-  const c3 = document.getElementById("char3").value.trim();
+  const charInputs = charListEl.querySelectorAll("input");
+  const characters = Array.from(charInputs).map(i => i.value.trim()).filter(n => n && n !== "旁白");
 
-  if (!title || !rule || !c1 || !c2 || !c3) {
-    alert("请填完：标题、世界设定、3个角色");
+  if (!title || !rule || characters.length === 0) {
+    alert("请填完：标题、世界设定、至少1个角色");
     return;
   }
 
@@ -304,16 +372,19 @@ document.getElementById("startStory").onclick = () => {
   state.story = {
     title,
     worldRule: rule,
-    char1: c1,
-    char2: c2,
-    char3: c3
+    characters: ["旁白", ...characters]
   };
   state.storyHistory = [];
   state.storyUserCount = 0;
   chatEl.innerHTML = "";
   storyModal.style.display = "none";
   save();
+  renderAll();
   alert("已进入故事：" + title);
+};
+
+document.getElementById("cancelStory").onclick = () => {
+  storyModal.style.display = "none";
 };
 
 // ==============================================
@@ -322,4 +393,12 @@ document.getElementById("startStory").onclick = () => {
 document.getElementById("closeAd").onclick = () => {
   adModal.style.display = "none";
 };
+
+// ==============================================
+// 初始化
+// ==============================================
+updateUI();
+renderAll();
 </script>
+</body>
+</html>
